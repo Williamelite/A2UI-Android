@@ -22,6 +22,12 @@ enum class A2UIDynamicScene(
     GAUGE("仪表盘指标", "圆形仪表盘 + 范围指示"),
     ANALYTICS("数据分析面板", "多图表组合 + 交互式展示"),
     CANDLESTICK("K线图表", "股票K线图 + 技术指标"),
+    // Phase 4 新增高级图表场景
+    HEATMAP("热力图", "数据密度可视化 + 颜色映射"),
+    RADAR("雷达图", "多维度对比分析 + 极坐标展示"),
+    BUBBLE("气泡图", "三维数据关系 + 大小编码"),
+    STREAMING("实时数据流", "动态更新图表 + 流式处理"),
+    INTERACTIVE("交互式图表", "缩放平移选择 + 用户交互"),
 }
 
 data class A2UISceneHint(
@@ -324,6 +330,111 @@ object A2UISceneInference {
                     "dashboard_data",
                 ),
             reason = "工具结果包含分析指标、统计数据等适合综合分析面板展示。",
+        )
+
+        // Phase 4 新增高级图表场景推理
+        maybeAddHint(
+            hints = hints,
+            scene = A2UIDynamicScene.HEATMAP,
+            matched = normalizedToolName.contains("heatmap") ||
+                normalizedToolName.contains("density") ||
+                normalizedToolName.contains("matrix") ||
+                keySet.intersects(
+                    "matrix",
+                    "grid_data",
+                    "density_map",
+                    "correlation_matrix",
+                    "intensity",
+                    "heat_values",
+                    "grid_values",
+                    "2d_array",
+                    "rows",
+                    "columns",
+                ),
+            reason = "工具结果包含矩阵、网格、密度等适合热力图展示的二维数据。",
+        )
+
+        maybeAddHint(
+            hints = hints,
+            scene = A2UIDynamicScene.RADAR,
+            matched = normalizedToolName.contains("radar") ||
+                normalizedToolName.contains("spider") ||
+                normalizedToolName.contains("polar") ||
+                normalizedToolName.contains("multi_dimension") ||
+                keySet.intersects(
+                    "dimensions",
+                    "attributes",
+                    "capabilities",
+                    "skills",
+                    "radar_data",
+                    "polar_data",
+                    "multi_axis",
+                    "comparison",
+                    "profile",
+                ),
+            reason = "工具结果包含多维度、属性对比等适合雷达图展示的数据。",
+        )
+
+        maybeAddHint(
+            hints = hints,
+            scene = A2UIDynamicScene.BUBBLE,
+            matched = normalizedToolName.contains("bubble") ||
+                normalizedToolName.contains("scatter") ||
+                normalizedToolName.contains("correlation") ||
+                keySet.intersects(
+                    "x_value",
+                    "y_value",
+                    "size_value",
+                    "bubble_data",
+                    "scatter_plot",
+                    "three_dimensional",
+                    "correlation",
+                    "relationship",
+                    "clusters",
+                ),
+            reason = "工具结果包含X-Y坐标和大小数据，适合气泡图展示三维关系。",
+        )
+
+        maybeAddHint(
+            hints = hints,
+            scene = A2UIDynamicScene.STREAMING,
+            matched = normalizedToolName.contains("stream") ||
+                normalizedToolName.contains("realtime") ||
+                normalizedToolName.contains("live") ||
+                normalizedToolName.contains("continuous") ||
+                keySet.intersects(
+                    "real_time",
+                    "streaming",
+                    "live_data",
+                    "continuous",
+                    "updates",
+                    "feed",
+                    "websocket",
+                    "push_data",
+                    "dynamic",
+                ),
+            reason = "工具结果包含实时、流式、动态更新等特征，适合流式图表展示。",
+        )
+
+        maybeAddHint(
+            hints = hints,
+            scene = A2UIDynamicScene.INTERACTIVE,
+            matched = normalizedToolName.contains("interactive") ||
+                normalizedToolName.contains("zoom") ||
+                normalizedToolName.contains("pan") ||
+                normalizedToolName.contains("select") ||
+                keySet.intersects(
+                    "interactive",
+                    "zoomable",
+                    "selectable",
+                    "draggable",
+                    "clickable",
+                    "user_input",
+                    "exploration",
+                    "drill_down",
+                    "filter",
+                ),
+            reason = "工具结果包含交互、缩放、选择等特征，适合交互式图表展示。",
         )
     }
 
