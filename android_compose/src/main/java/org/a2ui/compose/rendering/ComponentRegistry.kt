@@ -108,7 +108,12 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
     private fun registerDefaultComponents() {
         // ==================== Text ====================
         register("Text") { component, context ->
-            val text = resolve(context, component.text) as? String ?: ""
+            val resolvedText = resolve(context, component.text)
+            val text = when (resolvedText) {
+                null -> ""
+                is String -> resolvedText
+                else -> resolvedText.toString()
+            }
             // v0.9: variant, v0.8: usageHint
             val hint = component.variant ?: component.usageHint
             val textStyle = when (hint) {
@@ -145,11 +150,11 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
             val buttonContent: @Composable RowScope.() -> Unit = {
                 val childId = component.child
                 if (childId != null) {
-                    renderer.getComponent(context.surfaceId, childId)?.let { childComp ->
+                    renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let { childComp ->
                         render(childComp, context.copy(renderDepth = context.renderDepth + 1))
                     }
                 } else {
-                    val text = resolve(context, component.text) as? String ?: ""
+                    val text = resolve(context, component.text)?.toString().orEmpty()
                     Text(text = text)
                 }
             }
@@ -320,7 +325,7 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
                 val children = component.children
                 when {
                     childId != null -> {
-                        renderer.getComponent(context.surfaceId, childId)?.let {
+                        renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let {
                             Box(modifier = Modifier.padding(16.dp)) {
                                 render(it, context.copy(renderDepth = context.renderDepth + 1))
                             }
@@ -561,7 +566,7 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
                         LazyRow(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             itemsIndexed(children.array, key = { _, id -> id }) { _, childId ->
-                                renderer.getComponent(context.surfaceId, childId)?.let {
+                                renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let {
                                     render(it, context.copy(renderDepth = context.renderDepth + 1))
                                 }
                             }
@@ -570,7 +575,7 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
                         LazyColumn(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             itemsIndexed(children.array, key = { _, id -> id }) { _, childId ->
-                                renderer.getComponent(context.surfaceId, childId)?.let {
+                                renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let {
                                     render(it, context.copy(renderDepth = context.renderDepth + 1))
                                 }
                             }
@@ -602,7 +607,7 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
                 Box(modifier = Modifier.padding(16.dp)) {
                     val selectedTab = tabList.getOrNull(selectedTabIndex)
                     selectedTab?.child?.let { childId ->
-                        renderer.getComponent(context.surfaceId, childId)?.let {
+                        renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let {
                             render(it, context.copy(renderDepth = context.renderDepth + 1))
                         }
                     }
@@ -620,7 +625,7 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
 
             // 渲染触发器
             triggerId?.let { id ->
-                renderer.getComponent(context.surfaceId, id)?.let { triggerComp ->
+                renderer.resolveComponentForRender(context.surfaceId, id, component.id)?.let { triggerComp ->
                     Box(modifier = Modifier.clickable { isVisible = true }) {
                         render(triggerComp, context.copy(renderDepth = context.renderDepth + 1))
                     }
@@ -650,7 +655,7 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
                                             Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
                                         }
                                     }
-                                    renderer.getComponent(context.surfaceId, contentId)?.let {
+                                    renderer.resolveComponentForRender(context.surfaceId, contentId, component.id)?.let {
                                         render(it, context.copy(renderDepth = context.renderDepth + 1))
                                     }
                                 }
@@ -763,7 +768,7 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
         // ==================== Surface ====================
         register("Surface") { component, context ->
             component.child?.let { childId ->
-                renderer.getComponent(context.surfaceId, childId)?.let {
+                renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let {
                     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                         render(it, context.copy(renderDepth = context.renderDepth + 1))
                     }
@@ -859,7 +864,7 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
         when (val children = component.children) {
             is ChildList.ArrayChildList -> {
                 children.array.forEach { childId ->
-                    renderer.getComponent(context.surfaceId, childId)?.let {
+                    renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let {
                         val childWeight = it.weight
                         val modifier = if (childWeight != null && childWeight > 0) {
                             Modifier
@@ -882,7 +887,7 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
         when (val children = component.children) {
             is ChildList.ArrayChildList -> {
                 children.array.forEach { childId ->
-                    renderer.getComponent(context.surfaceId, childId)?.let {
+                    renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let {
                         Box {
                             render(it, context.copy(renderDepth = context.renderDepth + 1))
                         }
@@ -901,7 +906,7 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
         when (val children = component.children) {
             is ChildList.ArrayChildList -> {
                 children.array.forEach { childId ->
-                    renderer.getComponent(context.surfaceId, childId)?.let {
+                    renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let {
                         Box {
                             render(it, context.copy(renderDepth = context.renderDepth + 1))
                         }
@@ -920,7 +925,7 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
         when (val children = component.children) {
             is ChildList.ArrayChildList -> {
                 children.array.forEach { childId ->
-                    renderer.getComponent(context.surfaceId, childId)?.let {
+                    renderer.resolveComponentForRender(context.surfaceId, childId, component.id)?.let {
                         Box {
                             render(it, context.copy(renderDepth = context.renderDepth + 1))
                         }

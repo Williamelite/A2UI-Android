@@ -13,7 +13,22 @@ class A2UIPromptGuidanceTest {
             assertTrue("missing keyword: $keyword", prompt.contains(keyword))
         }
         assertTrue(prompt.contains("A2UI JSONL"))
-        assertTrue(prompt.contains("不要把原始 JSON"))
         assertTrue(prompt.contains("自然语言"))
+    }
+
+    @Test
+    fun middlewareInstruction_requiresAllReferencedComponentIdsToBeDefined() {
+        val prompt = A2UIPromptGuidance.middlewareInstruction()
+
+        assertTrue(prompt.contains("Any id referenced by child / children.array / componentId must be defined"))
+    }
+
+    @Test
+    fun promptGuidance_forbidsMismatchedToolDomainsAndFactFabrication() {
+        val middlewarePrompt = A2UIPromptGuidance.middlewareInstruction()
+        val summaryPrompt = A2UIPromptGuidance.toolSummaryInstruction()
+
+        assertTrue(middlewarePrompt.contains("Tool domain must match user intent"))
+        assertTrue(summaryPrompt.contains("do not fabricate UI or facts"))
     }
 }

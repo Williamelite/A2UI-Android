@@ -7,6 +7,13 @@ import org.a2ui.compose.data.*
 class A2UIRendererTest {
 
     private val renderer = A2UIRenderer()
+    private class RecordingLogger : A2UILogger {
+        val entries = mutableListOf<String>()
+
+        override fun log(level: A2UILogLevel, message: String) {
+            entries += "[$level] $message"
+        }
+    }
 
     @Test
     fun testProcessCreateSurface() {
@@ -310,5 +317,101 @@ class A2UIRendererTest {
         // Should succeed but not create the component
         assertTrue(result.isSuccess)
         assertNull(renderer.getComponent("nonexistent_surface", "root"))
+    }
+
+    @Test
+    fun resolveComponentForRender_synthesizesTextBindingForMissingReferencedChild() {
+        val logger = RecordingLogger()
+        val renderer = A2UIRenderer(logger = logger)
+
+        renderer.processMessage("""{
+            "version": "v0.10",
+            "createSurface": {
+                "surfaceId": "main",
+                "catalogId": "standard"
+            }
+        }""")
+        renderer.processMessage("""{
+            "version": "v0.10",
+            "updateComponents": {
+                "surfaceId": "main",
+                "components": [
+                    {"id": "root", "component": "Card", "child": "content"},
+                    {"id": "content", "component": "Column", "children": {"array": ["title", "stockInfo"]}},
+                    {"id": "title", "component": "Text", "text": {"literal": "润和软件（300339）"}},
+                    {"id": "stockInfo", "component": "Column", "children": {"array": ["price", "change", "range"]}}
+                ]
+            }
+        }""")
+        renderer.processMessage("""{
+            "version": "v0.10",
+            "updateDataModel": {
+                "surfaceId": "main",
+                "path": "/",
+                "value": {
+                    "price": "当前价: 11.32元",
+                    "change": "涨跌幅: -0.09% (-0.01元)",
+                    "range": "今开:11.33元 最高:11.37元 最低:11.28元"
+                }
+            }
+        }""")
+
+        val fallback = renderer.resolveComponentForRender("main", "price", "stockInfo")
+
+        assertNotNull(fallback)
+        assertEquals("Text", fallback?.component)
+        assertEquals(
+            "/price",
+            (fallback?.text as? DynamicValue.PathValue<String>)?.path
+        )
+        assertTrue(
+            logger.entries.any { entry ->
+                entry.contains("Missing referenced component 'price'") &&
+                    entry.contains("stockInfo") &&
+                    entry.contains("/price")
+            }
+        )
+    }
+
+    @Test
+    fun resolveComponentForRender_searchesNestedDataPathsForMissingChild() {
+        val renderer = A2UIRenderer()
+
+        renderer.processMessage("""{
+            "version": "v0.10",
+            "createSurface": {
+                "surfaceId": "weather_main",
+                "catalogId": "standard"
+            }
+        }""")
+        renderer.processMessage("""{
+            "version": "v0.10",
+            "updateComponents": {
+                "surfaceId": "weather_main",
+                "components": [
+                    {"id": "root", "component": "Card", "child": "content"},
+                    {"id": "content", "component": "Column", "children": {"array": ["weatherPanel"]}},
+                    {"id": "weatherPanel", "component": "Column", "children": {"array": ["temp"]}}
+                ]
+            }
+        }""")
+        renderer.processMessage("""{
+            "version": "v0.10",
+            "updateDataModel": {
+                "surfaceId": "weather_main",
+                "path": "/weather",
+                "value": {
+                    "temp": "25°C"
+                }
+            }
+        }""")
+
+        val fallback = renderer.resolveComponentForRender("weather_main", "temp", "weatherPanel")
+
+        assertNotNull(fallback)
+        assertEquals(
+            "/weather/temp",
+            (fallback?.text as? DynamicValue.PathValue<String>)?.path
+        )
     }
 }
