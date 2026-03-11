@@ -5,6 +5,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.unit.dp
 import kotlin.math.*
 
 /**
@@ -214,7 +215,7 @@ fun androidx.compose.ui.Modifier.chartInteraction(
                 }
                 selectionStart = null
             },
-            onDrag = { change ->
+            onDrag = { change, _ ->
                 when (config.mode) {
                     ChartInteractionMode.PAN, ChartInteractionMode.PAN_AND_ZOOM, ChartInteractionMode.ALL -> {
                         if (selectionStart == null) {

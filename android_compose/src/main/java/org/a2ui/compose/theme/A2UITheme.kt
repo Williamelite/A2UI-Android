@@ -9,6 +9,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -76,7 +77,7 @@ data class A2UIThemeConfig(
     val enableDataTransitions: Boolean = true,
     // 过渡效果配置
     val cardEnterAnimation: CardAnimation = CardAnimation.SLIDE_UP,
-    val cardExitAnimation: CardAnimation = CardAnimation.FADE_OUT,
+    val cardExitAnimation: CardAnimation = CardAnimation.FADE_IN,
     val listItemAnimation: ListAnimation = ListAnimation.STAGGER,
     // 高级视觉效果配置
     val enableAdvancedEffects: Boolean = false,
@@ -376,13 +377,13 @@ fun createAnimationSpec(config: A2UIThemeConfig): AnimationSpec<Float> {
  * 创建卡片进入动画
  */
 fun createCardEnterTransition(config: A2UIThemeConfig): EnterTransition {
-    val animationSpec = createAnimationSpec(config)
+    val animationSpec = tween<Float>(config.animationDuration)
     return when (config.cardEnterAnimation) {
         CardAnimation.FADE_IN -> fadeIn(animationSpec)
-        CardAnimation.SLIDE_UP -> slideInVertically(animationSpec) { it / 2 } + fadeIn(animationSpec)
-        CardAnimation.SLIDE_DOWN -> slideInVertically(animationSpec) { -it / 2 } + fadeIn(animationSpec)
-        CardAnimation.SCALE_IN -> scaleIn(animationSpec, initialScale = 0.8f) + fadeIn(animationSpec)
-        CardAnimation.FLIP_IN -> scaleIn(animationSpec, initialScale = 0.0f) + fadeIn(animationSpec)
+        CardAnimation.SLIDE_UP -> slideInVertically(tween(config.animationDuration)) { it / 2 } + fadeIn(animationSpec)
+        CardAnimation.SLIDE_DOWN -> slideInVertically(tween(config.animationDuration)) { -it / 2 } + fadeIn(animationSpec)
+        CardAnimation.SCALE_IN -> scaleIn(tween(config.animationDuration), initialScale = 0.8f) + fadeIn(animationSpec)
+        CardAnimation.FLIP_IN -> scaleIn(tween(config.animationDuration), initialScale = 0.0f) + fadeIn(animationSpec)
     }
 }
 
@@ -390,10 +391,10 @@ fun createCardEnterTransition(config: A2UIThemeConfig): EnterTransition {
  * 创建卡片退出动画
  */
 fun createCardExitTransition(config: A2UIThemeConfig): ExitTransition {
-    val animationSpec = createAnimationSpec(config)
+    val animationSpec = tween<Float>(config.animationDuration)
     return when (config.cardExitAnimation) {
-        CardAnimation.FADE_OUT -> fadeOut(animationSpec)
-        CardAnimation.SLIDE_DOWN -> slideOutVertically(animationSpec) { it / 2 } + fadeOut(animationSpec)
+        CardAnimation.FADE_IN -> fadeOut(animationSpec)
+        CardAnimation.SLIDE_DOWN -> slideOutVertically(tween(config.animationDuration)) { it / 2 } + fadeOut(animationSpec)
         else -> fadeOut(animationSpec)
     }
 }

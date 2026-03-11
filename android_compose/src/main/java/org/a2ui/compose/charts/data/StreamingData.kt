@@ -4,6 +4,7 @@ import androidx.compose.runtime.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlin.math.*
+import kotlin.random.Random
 
 /**
  * 流式数据源接口
@@ -54,7 +55,7 @@ class StreamingChartState<T>(
     private val dataSource: StreamingDataSource<T>,
     private val dataTransformer: (T) -> RealTimeDataPoint
 ) {
-    private var _series by mutableStateOf(RealTimeDataSeries("Default"))
+    private var _series by mutableStateOf(RealTimeDataSeries("Default", emptyList()))
     val series: RealTimeDataSeries get() = _series
 
     private var _isStreaming by mutableStateOf(false)
@@ -133,7 +134,7 @@ class SimulatedDataSource(
     override val dataFlow: Flow<Float> = flow {
         while (_isActive) {
             // 生成模拟数据（随机游走）
-            val change = (-5f..5f).random()
+            val change = Random.nextFloat() * 10f - 5f // (-5f..5f).random()
             baseValue = (baseValue + change).coerceIn(valueRange.first, valueRange.second)
             emit(baseValue)
             delay(updateInterval)
@@ -189,9 +190,9 @@ class WebSocketDataSource(
 
     private fun generateMockWebSocketData(): String {
         // 模拟股票价格数据
-        val price = (100f..200f).random()
-        val change = (-5f..5f).random()
-        val volume = (1000..10000).random()
+        val price = Random.nextFloat() * 100f + 100f // (100f..200f).random()
+        val change = Random.nextFloat() * 10f - 5f // (-5f..5f).random()
+        val volume = Random.nextInt(1000, 10001) // (1000..10000).random()
 
         return """
             {

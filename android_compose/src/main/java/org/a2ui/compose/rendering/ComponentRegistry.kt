@@ -57,6 +57,9 @@ import org.a2ui.compose.theme.a2uiThemeConfig
 import org.a2ui.compose.animation.*
 import org.a2ui.compose.charts.*
 import org.a2ui.compose.charts.advanced.*
+import kotlin.math.pow
+import kotlin.math.sqrt
+import kotlin.random.Random
 import org.a2ui.compose.charts.interaction.*
 import org.a2ui.compose.charts.data.*
 import org.a2ui.compose.charts.performance.*
@@ -115,7 +118,7 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
     }
 
     /** 解析值，支持 collection scope */
-    private fun resolve(ctx: SurfaceContext, value: DynamicValue<*>?): Any? {
+    internal fun resolve(ctx: SurfaceContext, value: DynamicValue<*>?): Any? {
         return renderer.resolveValueWithScope(ctx.surfaceId, value, ctx.scopePath)
     }
 
@@ -1489,6 +1492,12 @@ private fun ComponentRegistry.registerChartComponents() {
         }
     }
 }
+
+/**
+ * 生成X轴标签
+ */
+private fun generateXLabels(count: Int): List<String> {
+    return (0 until count).map { "T$it" }
 }
 
 /**
@@ -1553,10 +1562,10 @@ private fun generateSampleCandleData(): List<CandleData> {
     var price = 100f
     return (0..19).map { i ->
         val open = price
-        val change = (-5f..5f).random()
+        val change = Random.nextFloat() * 10f - 5f // (-5f..5f).random()
         val close = open + change
-        val high = maxOf(open, close) + (0f..3f).random()
-        val low = minOf(open, close) - (0f..3f).random()
+        val high = maxOf(open, close) + Random.nextFloat() * 3f // (0f..3f).random()
+        val low = minOf(open, close) - Random.nextFloat() * 3f // (0f..3f).random()
         price = close
 
         CandleData(
@@ -1565,7 +1574,7 @@ private fun generateSampleCandleData(): List<CandleData> {
             high = high,
             low = low,
             close = close,
-            volume = (1000f..10000f).random()
+            volume = Random.nextFloat() * 9000f + 1000f // (1000f..10000f).random()
         )
     }
 }
@@ -1575,12 +1584,12 @@ private fun generateSampleCandleData(): List<CandleData> {
  */
 private fun generateSampleLineSeries(): DataSeries {
     val values = (0..19).map { i ->
-        50f + kotlin.math.sin(i * 0.3) * 20f + (-5f..5f).random()
+        50f + kotlin.math.sin(i * 0.3) * 20f + (Random.nextFloat() * 10f - 5f) // (-5f..5f).random()
     }
 
     return DataSeries(
         name = "示例数据",
-        values = values,
+        values = values.map { it.toFloat() },
         color = Color(0xFF4CAF50),
         fillArea = true,
         showPoints = true
@@ -1722,7 +1731,7 @@ private fun generateSampleHeatmapData(): HeatmapData {
             val centerY = rows / 2f
             val distance = sqrt((col - centerX).pow(2) + (row - centerY).pow(2))
             val maxDistance = sqrt(centerX.pow(2) + centerY.pow(2))
-            (1f - distance / maxDistance) * 100f + (-10f..10f).random()
+            (1f - distance / maxDistance) * 100f + (Random.nextFloat() * 20f - 10f) // (-10f..10f).random()
         }
     }
 

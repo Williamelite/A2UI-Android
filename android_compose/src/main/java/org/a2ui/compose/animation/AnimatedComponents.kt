@@ -41,7 +41,12 @@ fun AnimatedCard(
                 .glassmorphism(themeConfig, cardShape)
                 .then(
                     if (themeConfig.enableAnimations) {
-                        Modifier.animateContentSize(createAnimationSpec(themeConfig))
+                        Modifier.animateContentSize(
+                            tween(
+                                durationMillis = themeConfig.animationDuration,
+                                easing = LinearEasing
+                            )
+                        )
                     } else {
                         Modifier
                     }
@@ -164,15 +169,15 @@ fun AnimatedListItem(
 
     val enterTransition = when (themeConfig.listItemAnimation) {
         ListAnimation.STAGGER -> slideInVertically(
-            animationSpec = createAnimationSpec(themeConfig)
-        ) { it / 2 } + fadeIn(createAnimationSpec(themeConfig))
+            animationSpec = tween(themeConfig.animationDuration)
+        ) { it / 2 } + fadeIn(tween(themeConfig.animationDuration))
         ListAnimation.WAVE -> slideInHorizontally(
-            animationSpec = createAnimationSpec(themeConfig)
-        ) { -it / 2 } + fadeIn(createAnimationSpec(themeConfig))
+            animationSpec = tween(themeConfig.animationDuration)
+        ) { -it / 2 } + fadeIn(tween(themeConfig.animationDuration))
         ListAnimation.CASCADE -> scaleIn(
-            animationSpec = createAnimationSpec(themeConfig),
+            animationSpec = tween(themeConfig.animationDuration),
             initialScale = 0.8f
-        ) + fadeIn(createAnimationSpec(themeConfig))
+        ) + fadeIn(tween(themeConfig.animationDuration))
         else -> fadeIn(tween(0))
     }
 

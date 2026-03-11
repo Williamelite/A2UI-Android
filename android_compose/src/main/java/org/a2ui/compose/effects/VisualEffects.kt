@@ -136,27 +136,23 @@ fun createGradientBrush(config: GradientConfig, width: Float = 1f, height: Float
 
             Brush.linearGradient(
                 colors = config.colors,
-                stops = config.stops,
                 start = Offset.Zero,
                 end = Offset(endX, endY)
             )
         }
         GradientType.RADIAL -> Brush.radialGradient(
             colors = config.colors,
-            stops = config.stops,
             center = Offset(config.centerX * width, config.centerY * height),
             radius = config.radius * minOf(width, height)
         )
         GradientType.SWEEP -> Brush.sweepGradient(
             colors = config.colors,
-            stops = config.stops,
             center = Offset(config.centerX * width, config.centerY * height)
         )
         GradientType.CONIC -> {
             // Conic gradient implementation (fallback to sweep for now)
             Brush.sweepGradient(
                 colors = config.colors,
-                stops = config.stops,
                 center = Offset(config.centerX * width, config.centerY * height)
             )
         }

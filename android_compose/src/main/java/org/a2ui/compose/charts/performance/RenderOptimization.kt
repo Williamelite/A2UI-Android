@@ -9,6 +9,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import kotlinx.coroutines.*
@@ -297,7 +298,7 @@ class LayeredRenderManager {
             canvas = canvas,
             size = size
         ) {
-            layer.renderFunction()
+            layer.renderFunction(this)
         }
 
         return bitmap
