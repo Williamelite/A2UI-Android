@@ -1,0 +1,214 @@
+package org.a2ui.compose.protocol
+
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+
+enum class A2UIDynamicScene(
+    val displayName: String,
+    val recommendedLayout: String,
+) {
+    WEATHER("天气卡片", "单卡 + 指标列"),
+    ROUTE("路线卡片", "路线摘要卡或步骤卡"),
+    POI_LIST("地点列表卡片", "列表卡或分组列表"),
+    VEHICLE_STATUS("车辆状态卡片", "状态卡或组合面板"),
+    DIAGNOSTIC("诊断告警卡片", "告警卡或检查列表"),
+}
+
+data class A2UISceneHint(
+    val scene: A2UIDynamicScene,
+    val reason: String,
+)
+
+object A2UISceneInference {
+
+    @JvmStatic
+    fun inferScenes(
+        toolCalls: List<A2UIToolCall>,
+        toolResults: Map<String, String>,
+    ): List<A2UISceneHint> {
+        val hints = LinkedHashMap<A2UIDynamicScene, A2UISceneHint>()
+        val handledToolCallIds = mutableSetOf<String>()
+
+        toolCalls.forEach { toolCall ->
+            handledToolCallIds += toolCall.id
+            inferFromPayload(
+                hints = hints,
+                toolName = toolCall.name,
+                payload = toolResults[toolCall.id].orEmpty(),
+            )
+        }
+
+        toolResults
+            .filterKeys { it !in handledToolCallIds }
+            .forEach { (_, payload) ->
+                inferFromPayload(
+                    hints = hints,
+                    toolName = null,
+                    payload = payload,
+                )
+            }
+
+        return hints.values.toList()
+    }
+
+    private fun inferFromPayload(
+        hints: LinkedHashMap<A2UIDynamicScene, A2UISceneHint>,
+        toolName: String?,
+        payload: String,
+    ) {
+        val normalizedToolName = toolName?.lowercase().orEmpty()
+        val keySet = collectJsonKeys(payload)
+
+        maybeAddHint(
+            hints = hints,
+            scene = A2UIDynamicScene.WEATHER,
+            matched = normalizedToolName.contains("weather") ||
+                keySet.intersects(
+                    "current_weather",
+                    "weather_code",
+                    "temperature",
+                    "temperature_2m",
+                    "temperature_2m_max",
+                    "temperature_2m_min",
+                    "humidity",
+                    "wind_speed",
+                    "wind_speed_10m",
+                    "precipitation",
+                    "hourly",
+                    "daily",
+                ),
+            reason = "工具名或结果字段呈现天气概况、温度、风速或逐时/逐日气象数据。",
+        )
+
+        maybeAddHint(
+            hints = hints,
+            scene = A2UIDynamicScene.ROUTE,
+            matched = normalizedToolName.contains("route") ||
+                normalizedToolName.contains("navigation") ||
+                keySet.intersects(
+                    "route_id",
+                    "eta_minutes",
+                    "total_time_minutes",
+                    "resume_in_minutes",
+                    "distance_km",
+                    "total_distance_km",
+                    "destination",
+                    "origin",
+                    "congestion_level",
+                    "waypoint_count",
+                    "route_preference",
+                ),
+            reason = "工具结果包含起终点、ETA、距离、拥堵等级或路线标识。",
+        )
+
+        maybeAddHint(
+            hints = hints,
+            scene = A2UIDynamicScene.POI_LIST,
+            matched = normalizedToolName.contains("poi") ||
+                normalizedToolName.contains("restaurant") ||
+                normalizedToolName.contains("attraction") ||
+                keySet.intersects(
+                    "results",
+                    "pois",
+                    "restaurants",
+                    "attractions",
+                    "address",
+                    "distance_m",
+                    "distance_km",
+                    "rating",
+                    "category",
+                    "count",
+                ),
+            reason = "工具结果更像地点、餐厅或候选项列表，需要列表化展示。",
+        )
+
+        maybeAddHint(
+            hints = hints,
+            scene = A2UIDynamicScene.VEHICLE_STATUS,
+            matched = normalizedToolName.contains("vehicle") ||
+                normalizedToolName.contains("battery") ||
+                normalizedToolName.contains("fuel") ||
+                normalizedToolName.contains("maintenance") ||
+                keySet.intersects(
+                    "systems",
+                    "overall_score",
+                    "fuel_level_percent",
+                    "fuel_liters",
+                    "health_percent",
+                    "voltage",
+                    "oil_life_percent",
+                    "brake_pad_percent",
+                    "estimated_range_km",
+                    "next_maintenance_km",
+                    "next_maintenance_date",
+                ),
+            reason = "工具结果包含车辆健康、续航、油量、电池或保养状态。",
+        )
+
+        maybeAddHint(
+            hints = hints,
+            scene = A2UIDynamicScene.DIAGNOSTIC,
+            matched = normalizedToolName.contains("obd") ||
+                normalizedToolName.contains("diagnostic") ||
+                keySet.intersects(
+                    "codes",
+                    "severity",
+                    "fault_code",
+                    "warning",
+                    "error",
+                    "code",
+                    "code_type",
+                    "description",
+                    "cleared",
+                ),
+            reason = "工具结果包含故障码、严重等级、清除结果或诊断告警信息。",
+        )
+    }
+
+    private fun maybeAddHint(
+        hints: LinkedHashMap<A2UIDynamicScene, A2UISceneHint>,
+        scene: A2UIDynamicScene,
+        matched: Boolean,
+        reason: String,
+    ) {
+        if (matched && !hints.containsKey(scene)) {
+            hints[scene] = A2UISceneHint(scene = scene, reason = reason)
+        }
+    }
+
+    private fun collectJsonKeys(payload: String): Set<String> {
+        val trimmedPayload = payload.trim()
+        if (trimmedPayload.isBlank() || (!trimmedPayload.startsWith("{") && !trimmedPayload.startsWith("["))) {
+            return emptySet()
+        }
+
+        return runCatching {
+            val root = JsonParser.parseString(trimmedPayload)
+            linkedSetOf<String>().apply { collectKeys(root, this) }
+        }.getOrDefault(emptySet())
+    }
+
+    private fun collectKeys(element: JsonElement, keys: MutableSet<String>) {
+        when {
+            element.isJsonObject -> collectObjectKeys(element.asJsonObject, keys)
+            element.isJsonArray -> collectArrayKeys(element.asJsonArray, keys)
+        }
+    }
+
+    private fun collectObjectKeys(obj: JsonObject, keys: MutableSet<String>) {
+        obj.entrySet().forEach { (key, value) ->
+            keys += key
+            collectKeys(value, keys)
+        }
+    }
+
+    private fun collectArrayKeys(array: JsonArray, keys: MutableSet<String>) {
+        array.forEach { collectKeys(it, keys) }
+    }
+
+    private fun Set<String>.intersects(vararg candidates: String): Boolean {
+        return candidates.any { contains(it) }
+    }
+}
