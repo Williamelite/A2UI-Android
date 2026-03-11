@@ -1,14 +1,21 @@
 package org.a2ui.compose.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 data class A2UIColorScheme(
@@ -50,6 +57,14 @@ data class A2UIThemeConfig(
     val darkMode: Boolean? = null,
     val borderRadius: Int = 8,
     val fontFamily: String? = null,
+    // 新增毛玻璃和立体效果配置
+    val enableGlassmorphism: Boolean = false,
+    val blurRadius: Int = 10,
+    val cardElevation: Int = 8,
+    val gradientColors: List<String>? = null,
+    val shadowColor: String? = null,
+    val glassmorphismAlpha: Float = 0.2f,
+    val borderWidth: Int = 1,
 )
 
 val LocalA2UIThemeConfig = staticCompositionLocalOf { A2UIThemeConfig() }
@@ -224,4 +239,68 @@ fun A2UITheme(
 @Composable
 fun a2uiThemeConfig(): A2UIThemeConfig {
     return LocalA2UIThemeConfig.current
+}
+
+/**
+ * 创建毛玻璃效果的Modifier
+ */
+fun Modifier.glassmorphism(
+    config: A2UIThemeConfig,
+    shape: Shape,
+    darkTheme: Boolean = false
+): Modifier {
+    return if (config.enableGlassmorphism) {
+        val baseColor = if (darkTheme) Color.White else Color.Black
+        val gradientColors = config.gradientColors?.mapNotNull { parseColor(it) }
+            ?: listOf(
+                baseColor.copy(alpha = config.glassmorphismAlpha),
+                baseColor.copy(alpha = config.glassmorphismAlpha * 0.5f)
+            )
+
+        this
+            .background(
+                brush = Brush.verticalGradient(colors = gradientColors),
+                shape = shape
+            )
+            .blur(radius = config.blurRadius.dp)
+            .border(
+                width = config.borderWidth.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        baseColor.copy(alpha = 0.3f),
+                        baseColor.copy(alpha = 0.1f)
+                    )
+                ),
+                shape = shape
+            )
+    } else {
+        this
+    }
+}
+
+/**
+ * 获取增强的卡片颜色
+ */
+@Composable
+fun getEnhancedCardColors(
+    config: A2UIThemeConfig,
+    darkTheme: Boolean = isSystemInDarkTheme()
+): CardColors {
+    return if (config.enableGlassmorphism) {
+        CardDefaults.cardColors(
+            containerColor = Color.Transparent
+        )
+    } else {
+        CardDefaults.cardColors()
+    }
+}
+
+/**
+ * 获取增强的卡片阴影
+ */
+@Composable
+fun getEnhancedCardElevation(config: A2UIThemeConfig): CardElevation {
+    return CardDefaults.cardElevation(
+        defaultElevation = config.cardElevation.dp
+    )
 }

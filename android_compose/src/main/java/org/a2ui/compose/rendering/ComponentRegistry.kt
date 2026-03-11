@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,7 +24,9 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -47,6 +50,10 @@ import org.a2ui.compose.data.*
 import org.a2ui.compose.theme.A2UITheme
 import org.a2ui.compose.theme.A2UIThemeConfig
 import org.a2ui.compose.theme.parseColor
+import org.a2ui.compose.theme.glassmorphism
+import org.a2ui.compose.theme.getEnhancedCardColors
+import org.a2ui.compose.theme.getEnhancedCardElevation
+import org.a2ui.compose.theme.a2uiThemeConfig
 import org.a2ui.compose.validation.SafeRegexValidator
 import java.util.concurrent.ConcurrentHashMap
 
@@ -315,10 +322,17 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
 
         // ==================== Card ====================
         register("Card") { component, context ->
+            val themeConfig = a2uiThemeConfig()
+            val cardShape = RoundedCornerShape(themeConfig.borderRadius.dp)
+
             Card(
-                modifier = Modifier.fillMaxWidth().padding(8.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .glassmorphism(themeConfig, cardShape),
+                elevation = getEnhancedCardElevation(themeConfig),
+                colors = getEnhancedCardColors(themeConfig),
+                shape = cardShape
             ) {
                 // ✅ 同时支持 child 和 children
                 val childId = component.child
@@ -335,6 +349,121 @@ class ComponentRegistry(private val renderer: A2UIRenderer) {
                         Box(modifier = Modifier.padding(16.dp)) {
                             Column { resolveChildren(component, context) }
                         }
+                    }
+                }
+            }
+        }
+
+        // ==================== StockCard ====================
+        register("StockCard") { component, context ->
+            val themeConfig = a2uiThemeConfig()
+            val cardShape = RoundedCornerShape(16.dp)
+
+            // 解析股票数据 - 使用text属性作为股票信息
+            val stockInfo = resolve(context, component.text) as? String ?: "股票信息"
+            val lines = stockInfo.split("\n")
+
+            // 尝试解析股票数据
+            var symbol = "N/A"
+            var price = "0.00"
+            var change = "0.00%"
+            var volume = "0"
+
+            lines.forEach { line ->
+                when {
+                    line.contains("股票代码") || line.contains("Symbol") -> {
+                        symbol = line.substringAfter(":").trim()
+                    }
+                    line.contains("价格") || line.contains("Price") -> {
+                        price = line.substringAfter(":").trim()
+                    }
+                    line.contains("涨跌") || line.contains("Change") -> {
+                        change = line.substringAfter(":").trim()
+                    }
+                    line.contains("成交量") || line.contains("Volume") -> {
+                        volume = line.substringAfter(":").trim()
+                    }
+                }
+            }
+
+            val isPositive = !change.startsWith("-")
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+                    .glassmorphism(themeConfig.copy(enableGlassmorphism = true), cardShape),
+                elevation = getEnhancedCardElevation(themeConfig.copy(cardElevation = 12)),
+                colors = getEnhancedCardColors(themeConfig.copy(enableGlassmorphism = true)),
+                shape = cardShape
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 股票代码和名称
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = symbol,
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Icon(
+                            imageVector = if (isPositive) Icons.Default.TrendingUp else Icons.Default.TrendingDown,
+                            contentDescription = if (isPositive) "上涨" else "下跌",
+                            tint = if (isPositive) Color(0xFF4CAF50) else Color(0xFFF44336)
+                        )
+                    }
+
+                    // 价格信息
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        Text(
+                            text = price,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = change,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (isPositive) Color(0xFF4CAF50) else Color(0xFFF44336)
+                        )
+                    }
+
+                    // 成交量
+                    if (volume != "0" && volume.isNotBlank()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "成交量",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = volume,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    // 如果无法解析，显示原始文本
+                    if (symbol == "N/A" && price == "0.00") {
+                        Text(
+                            text = stockInfo,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }

@@ -14,6 +14,9 @@ enum class A2UIDynamicScene(
     POI_LIST("地点列表卡片", "列表卡或分组列表"),
     VEHICLE_STATUS("车辆状态卡片", "状态卡或组合面板"),
     DIAGNOSTIC("诊断告警卡片", "告警卡或检查列表"),
+    // 新增股票和金融场景
+    STOCK("股票信息卡片", "毛玻璃卡片 + 实时数据指标"),
+    FINANCIAL("金融数据面板", "立体卡片组合 + 趋势图表"),
 }
 
 data class A2UISceneHint(
@@ -164,6 +167,62 @@ object A2UISceneInference {
                     "cleared",
                 ),
             reason = "工具结果包含故障码、严重等级、清除结果或诊断告警信息。",
+        )
+
+        // 新增股票场景推理
+        maybeAddHint(
+            hints = hints,
+            scene = A2UIDynamicScene.STOCK,
+            matched = normalizedToolName.contains("stock") ||
+                normalizedToolName.contains("share") ||
+                normalizedToolName.contains("equity") ||
+                keySet.intersects(
+                    "price",
+                    "stock_price",
+                    "current_price",
+                    "open_price",
+                    "close_price",
+                    "high_price",
+                    "low_price",
+                    "change",
+                    "change_percent",
+                    "volume",
+                    "market_cap",
+                    "pe_ratio",
+                    "dividend",
+                    "symbol",
+                    "ticker",
+                    "exchange",
+                ),
+            reason = "工具结果包含股票价格、涨跌幅、成交量、市值等股票相关数据。",
+        )
+
+        // 新增金融场景推理
+        maybeAddHint(
+            hints = hints,
+            scene = A2UIDynamicScene.FINANCIAL,
+            matched = normalizedToolName.contains("financial") ||
+                normalizedToolName.contains("finance") ||
+                normalizedToolName.contains("market") ||
+                normalizedToolName.contains("investment") ||
+                keySet.intersects(
+                    "portfolio",
+                    "assets",
+                    "balance",
+                    "profit",
+                    "loss",
+                    "revenue",
+                    "earnings",
+                    "financial_data",
+                    "market_data",
+                    "investment",
+                    "fund",
+                    "bond",
+                    "currency",
+                    "exchange_rate",
+                    "interest_rate",
+                ),
+            reason = "工具结果包含投资组合、资产负债、收益损失等综合金融数据。",
         )
     }
 
